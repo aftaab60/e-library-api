@@ -32,6 +32,11 @@ go run main.go
 
 By default, the server runs on `localhost:3000`.
 
+If using PostgreSQL DB, run docker command
+```
+docker-compose -f ./internal/docker/docker-compose.yml up -d 
+```
+
 ## API Endpoints
 
 ### 1. Get Book Details

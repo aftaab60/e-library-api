@@ -18,12 +18,13 @@ func NewBookRoute(bookService services.BookService) *BookRoute {
 }
 
 func (r *BookRoute) GetBookByTitle(c *gin.Context) {
+	ctx := c.Request.Context()
 	title := strings.TrimSpace(c.Param("title"))
 	if err := r.validateTitle(title); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	book, err := r.BookService.GetBookByTitle(title)
+	book, err := r.BookService.GetBookByTitle(ctx, title)
 	if err != nil {
 		if errors.Is(err, repositories.ErrBookNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})

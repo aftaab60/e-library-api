@@ -1,0 +1,28 @@
+version: "3.9"
+name: simple_transaction_app
+services:
+  db_pgsql:
+    image: postgres:14
+    platform: linux/x86_64
+    container_name: db_pgsql
+    networks:
+      - default
+    ports:
+      - '5432:5432'
+    expose:
+      - '5432' # Opens port 5432 on the container
+    env_file:
+      - docker-pgsql.env
+    volumes:
+      - ./conf/pgsql.conf:/etc/postgresql/postgresql.conf # Where our db instance config is set
+      - ./tables_data_setup.sql:/docker-entrypoint-initdb.d/tables_data_setup.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 20s
+      retries: 10
+      start_period: 5s
+volumes:
+  cache-redis:
+    driver: local
+  data:
