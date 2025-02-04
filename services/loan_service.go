@@ -85,25 +85,6 @@ func (s *LoanService) BorrowBook(ctx context.Context, title string, borrowerName
 		return nil, err
 	}
 
-	/*
-		if _, err = s.BookRepository.UpdateBook(ctx, title, book.AvailableCopies-1); err != nil {
-			log.Printf("error updating book available copies: %v", err)
-			return nil, err
-		}
-
-		loan, err = s.LoanRepository.CreateLoan(ctx, title, &models.Loan{
-			BookId:       book.Id,
-			BorrowerName: borrowerName,
-			LoanDate:     time.Now(),
-			ReturnDate:   time.Now().AddDate(0, 0, 28),
-			IsReturn:     false,
-		})
-		if err != nil {
-			log.Printf("error creating loan from repository: %v", err)
-			return nil, err
-		}
-	*/
-
 	return &models.LoanDetail{
 		NameOfBorrower: loan.BorrowerName,
 		LoanDate:       loan.LoanDate,
@@ -138,29 +119,46 @@ func (s *LoanService) ExtendLoan(ctx context.Context, title string, borrowerName
 }
 
 func (s *LoanService) ReturnBook(ctx context.Context, title string, borrowerName string) error {
+	// check if the loan is already returned
+	loan, err := s.LoanRepository.GetLoan(ctx, title, borrowerName)
+	if err != nil {
+		return err
+	}
+	if loan.IsReturn {
+		log.Printf("Loan for book '%s' by borrower '%s' has already been returned.", title, borrowerName)
+		return repositories.ErrLoanNotFound
+	}
+
 	book, err := s.BookRepository.GetBook(ctx, title)
 	if err != nil {
 		return err
 	}
 
-	t := time.Now()
-	isReturn := true
-	updatedLoan, err := s.LoanRepository.UpdateLoan(ctx, title, borrowerName, &models.LoanUpdate{
-		ReturnDate: &t,
-		IsReturn:   &isReturn,
-	})
-	if err != nil {
-		if errors.Is(err, repositories.ErrLoanNotFound) {
-			log.Printf("Loan '%s' not found", title)
+	if err = db_manager.WrapInTransaction(ctx, s.TxDB, func(ctx context.Context) error {
+		t := time.Now()
+		isReturn := true
+		_, err := s.LoanRepository.UpdateLoan(ctx, title, borrowerName, &models.LoanUpdate{
+			ReturnDate: &t,
+			IsReturn:   &isReturn,
+		})
+		if err != nil {
+			if errors.Is(err, repositories.ErrLoanNotFound) {
+				log.Printf("Loan '%s' not found", title)
+			}
+			return err
 		}
+
+		if _, err := s.BookRepository.UpdateBook(ctx, title, book.AvailableCopies+1); err != nil {
+			log.Printf("error updating book available copies: %v", err)
+			return err
+		}
+
+		return nil
+	}, nil); err != nil {
+		log.Printf("error in returning book and loan update transaction: %v", err)
 		return err
 	}
 
-	if _, err := s.BookRepository.UpdateBook(ctx, title, book.AvailableCopies+1); err != nil {
-		log.Printf("error updating book available copies: %v", err)
-		return err
-	}
-
-	log.Printf("book has been returned, loanId: %d, booktitle: %s, borrowerName: %s\n", updatedLoan.Id, title, borrowerName)
+	log.Printf("book has been returned, loanId: %d, booktitle: %s, borrowerName: %s\n", title, borrowerName)
 	return nil
 }
