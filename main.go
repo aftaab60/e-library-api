@@ -20,8 +20,13 @@ func main() {
 }
 
 func setupRoutes(r *gin.Engine) {
+	//From below 2 lines, select either in-memory or pgsql db repository.
+	//Implementation are on interfaces hence same service works in both cases.
+	
 	bookRepository := repositories.NewBookRepository()
 	loanRepository := repositories.NewLoanRepository()
+	//bookRepository := repositories.NewBookRepositoryDB(db_manager.InitPgsqlConnection())
+	//loanRepository := repositories.NewLoanRepositoryDB(db_manager.InitPgsqlConnection())
 
 	bookRoute := routes.NewBookRoute(services.NewBookService(bookRepository))
 	loanRoute := routes.NewLoanRoute(services.NewLoanService(loanRepository, bookRepository))

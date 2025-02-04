@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"github.com/aftaab60/e-library-api/models"
 	"github.com/aftaab60/e-library-api/repositories"
@@ -16,8 +17,8 @@ func NewBookService(bookRepository repositories.IBookRepository) BookService {
 	return BookService{bookRepository: bookRepository}
 }
 
-func (s *BookService) GetBookByTitle(title string) (*models.BookDetail, error) {
-	book, err := s.bookRepository.GetBook(title)
+func (s *BookService) GetBookByTitle(ctx context.Context, title string) (*models.BookDetail, error) {
+	book, err := s.bookRepository.GetBook(ctx, title)
 	if err != nil {
 		if errors.Is(err, repositories.ErrBookNotFound) {
 			log.Printf("book '%s' not found", title)
@@ -26,5 +27,9 @@ func (s *BookService) GetBookByTitle(title string) (*models.BookDetail, error) {
 		}
 		return nil, err
 	}
-	return book, nil
+
+	return &models.BookDetail{
+		Title:           book.Title,
+		AvailableCopies: book.AvailableCopies,
+	}, nil
 }

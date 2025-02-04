@@ -1,24 +1,25 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"github.com/aftaab60/e-library-api/models"
 	"sync"
 )
 
 type IBookRepository interface {
-	GetBook(title string) (*models.BookDetail, error)
-	UpdateBook(title string, availableQuantity int) (*models.BookDetail, error)
+	GetBook(ctx context.Context, title string) (*models.Book, error)
+	UpdateBook(ctx context.Context, title string, availableQuantity int) (*models.Book, error)
 }
 
 type BookRepository struct {
-	books map[string]*models.BookDetail
+	books map[string]*models.Book
 	mutex sync.RWMutex
 }
 
 func NewBookRepository() *BookRepository {
 	repo := &BookRepository{
-		books: make(map[string]*models.BookDetail),
+		books: make(map[string]*models.Book),
 	}
 	repo.initBookRepository()
 	return repo
@@ -29,11 +30,11 @@ func (br *BookRepository) initBookRepository() {
 	br.mutex.Lock()
 	defer br.mutex.Unlock()
 
-	books := []models.BookDetail{
-		{Title: "book1", AvailableCopies: 5},
-		{Title: "book2", AvailableCopies: 3},
-		{Title: "book3", AvailableCopies: 1},
-		{Title: "book4", AvailableCopies: 0},
+	books := []models.Book{
+		{Id: 1, Title: "book1", AvailableCopies: 5},
+		{Id: 2, Title: "book2", AvailableCopies: 3},
+		{Id: 3, Title: "book3", AvailableCopies: 1},
+		{Id: 4, Title: "book4", AvailableCopies: 0},
 	}
 	for _, book := range books {
 		br.books[book.Title] = &book
@@ -43,7 +44,7 @@ func (br *BookRepository) initBookRepository() {
 // ErrBookNotFound is returned when a book is not found
 var ErrBookNotFound = errors.New("book not found")
 
-func (br *BookRepository) GetBook(title string) (*models.BookDetail, error) {
+func (br *BookRepository) GetBook(ctx context.Context, title string) (*models.Book, error) {
 	book, ok := br.books[title]
 	if !ok {
 		return nil, ErrBookNotFound
@@ -51,7 +52,7 @@ func (br *BookRepository) GetBook(title string) (*models.BookDetail, error) {
 	return book, nil
 }
 
-func (br *BookRepository) UpdateBook(title string, availableCopies int) (*models.BookDetail, error) {
+func (br *BookRepository) UpdateBook(ctx context.Context, title string, availableCopies int) (*models.Book, error) {
 	book, ok := br.books[title]
 	if !ok {
 		return nil, ErrBookNotFound

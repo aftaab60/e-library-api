@@ -20,6 +20,7 @@ func NewLoanRoute(LoanService services.LoanService) *LoanRoute {
 }
 
 func (r *LoanRoute) BorrowBook(c *gin.Context) {
+	ctx := c.Request.Context()
 	var request models.LoanRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid request body, err: %s", err.Error())})
@@ -34,7 +35,7 @@ func (r *LoanRoute) BorrowBook(c *gin.Context) {
 		return
 	}
 
-	LoanDetail, err := r.LoanService.BorrowBook(request.Title, request.BorrowerName)
+	LoanDetail, err := r.LoanService.BorrowBook(ctx, request.Title, request.BorrowerName)
 	if err != nil {
 		if errors.Is(err, repositories.ErrBookNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
@@ -49,6 +50,7 @@ func (r *LoanRoute) BorrowBook(c *gin.Context) {
 }
 
 func (r *LoanRoute) ExtendLoan(c *gin.Context) {
+	ctx := c.Request.Context()
 	var request models.LoanRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid request body, err: %s", err.Error())})
@@ -63,7 +65,7 @@ func (r *LoanRoute) ExtendLoan(c *gin.Context) {
 		return
 	}
 
-	LoanDetail, err := r.LoanService.ExtendLoan(request.Title, request.BorrowerName)
+	LoanDetail, err := r.LoanService.ExtendLoan(ctx, request.Title, request.BorrowerName)
 	if err != nil {
 		if errors.Is(err, repositories.ErrLoanNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
@@ -76,6 +78,7 @@ func (r *LoanRoute) ExtendLoan(c *gin.Context) {
 }
 
 func (r *LoanRoute) ReturnBook(c *gin.Context) {
+	ctx := c.Request.Context()
 	var request models.LoanRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid request body, err: %s", err.Error())})
@@ -90,7 +93,7 @@ func (r *LoanRoute) ReturnBook(c *gin.Context) {
 		return
 	}
 
-	if err := r.LoanService.ReturnBook(request.Title, request.BorrowerName); err != nil {
+	if err := r.LoanService.ReturnBook(ctx, request.Title, request.BorrowerName); err != nil {
 		if errors.Is(err, repositories.ErrLoanNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
 		} else {

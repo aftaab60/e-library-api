@@ -1,26 +1,28 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"github.com/aftaab60/e-library-api/models"
 	"sync"
 )
 
 type ILoanRepository interface {
-	GetLoan(title string, borrowerName string) (*models.LoanDetail, error)
-	CreateLoan(title string, loanDetail *models.LoanDetail) (*models.LoanDetail, error)
-	UpdateLoan(title string, loanDetail *models.LoanDetail) (*models.LoanDetail, error)
-	DeleteLoan(title string, borrowerName string) error
+	GetLoan(ctx context.Context, title string, borrowerName string) (*models.Loan, error)
+	CreateLoan(ctx context.Context, title string, loanDetail *models.Loan) (*models.Loan, error)
+	UpdateLoan(ctx context.Context, title string, borrowerName string, loanUpdate *models.LoanUpdate) (*models.Loan, error)
+	DeleteLoan(ctx context.Context, title string, borrowerName string) error
 }
 
 type LoanRepository struct {
-	loans map[string][]models.LoanDetail
+	//book_id: All loans of this book title. Value can also be map[borrower]Loan but keeping slice for simplicity
+	loans map[string][]models.Loan
 	mutex sync.RWMutex
 }
 
 func NewLoanRepository() *LoanRepository {
 	return &LoanRepository{
-		loans: make(map[string][]models.LoanDetail),
+		loans: make(map[string][]models.Loan),
 	}
 }
 
@@ -30,53 +32,60 @@ var ErrLoanNotFound = errors.New("loan not found")
 // ErrExistingActiveLoan is returned when a book is not found
 var ErrExistingActiveLoan = errors.New("existing active loan")
 
-func (l *LoanRepository) GetLoan(title string, borrowerName string) (*models.LoanDetail, error) {
+func (l *LoanRepository) GetLoan(ctx context.Context, title string, borrowerName string) (*models.Loan, error) {
 	loanDetails, exists := l.loans[title]
 	if !exists {
 		return nil, ErrLoanNotFound
 	}
 	for _, loanDetail := range loanDetails {
-		if loanDetail.NameOfBorrower == borrowerName {
+		if loanDetail.BorrowerName == borrowerName && !loanDetail.IsReturn {
 			return &loanDetail, nil
 		}
 	}
 	return nil, ErrLoanNotFound
 }
 
-func (l *LoanRepository) CreateLoan(title string, loanDetail *models.LoanDetail) (*models.LoanDetail, error) {
+func (l *LoanRepository) CreateLoan(ctx context.Context, title string, loanDetail *models.Loan) (*models.Loan, error) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
 	loanDetails, exists := l.loans[title]
 	if exists {
 		for _, loan := range loanDetails {
-			if loanDetail.NameOfBorrower == loan.NameOfBorrower {
+			if loanDetail.BorrowerName == loan.BorrowerName {
 				return nil, ErrExistingActiveLoan
 			}
 		}
 	} else {
-		loanDetails = make([]models.LoanDetail, 0)
+		loanDetails = make([]models.Loan, 0)
 	}
 
+	loanDetail.Id = len(loanDetails) + 1 //incremental id
 	loanDetails = append(loanDetails, *loanDetail)
 	l.loans[title] = loanDetails
 
 	return &loanDetails[len(loanDetails)-1], nil
 }
 
-func (l *LoanRepository) UpdateLoan(title string, loanDetail *models.LoanDetail) (*models.LoanDetail, error) {
+func (l *LoanRepository) UpdateLoan(ctx context.Context, title string, borrowerName string, loanUpdate *models.LoanUpdate) (*models.Loan, error) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
 	loanDetails, exists := l.loans[title]
-	if !exists || loanDetail == nil {
+	if !exists || loanUpdate == nil {
 		return nil, ErrLoanNotFound
 	}
 
-	var updatedLoan *models.LoanDetail
+	var updatedLoan *models.Loan
 	for i, loan := range loanDetails {
-		if loan.NameOfBorrower == loanDetail.NameOfBorrower {
-			loanDetails[i] = *loanDetail
+		if loan.BorrowerName == borrowerName {
+			//update values if not null
+			if loanUpdate.ReturnDate != nil {
+				loanDetails[i].ReturnDate = *loanUpdate.ReturnDate
+			}
+			if loanUpdate.IsReturn != nil {
+				loanDetails[i].IsReturn = *loanUpdate.IsReturn
+			}
 			updatedLoan = &loanDetails[i]
 			break
 		}
@@ -90,7 +99,7 @@ func (l *LoanRepository) UpdateLoan(title string, loanDetail *models.LoanDetail)
 	return updatedLoan, nil
 }
 
-func (l *LoanRepository) DeleteLoan(title string, borrowerName string) error {
+func (l *LoanRepository) DeleteLoan(ctx context.Context, title string, borrowerName string) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
@@ -100,7 +109,7 @@ func (l *LoanRepository) DeleteLoan(title string, borrowerName string) error {
 	}
 
 	for i, loanDetail := range loanDetails {
-		if loanDetail.NameOfBorrower == borrowerName {
+		if loanDetail.BorrowerName == borrowerName {
 			updatedLoanDetails := append(loanDetails[:i], loanDetails[i+1:]...)
 			l.loans[title] = updatedLoanDetails
 

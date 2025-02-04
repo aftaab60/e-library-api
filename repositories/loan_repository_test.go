@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"github.com/aftaab60/e-library-api/models"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -9,22 +10,25 @@ import (
 
 func TestLoanRepository_CreateLoan(t *testing.T) {
 	repo := NewLoanRepository()
+	ctx := context.Background()
 
-	loanDetail := &models.LoanDetail{
-		NameOfBorrower: "user1",
-		LoanDate:       time.Now(),
-		ReturnDate:     time.Now().AddDate(0, 0, 28),
+	loanDetail := &models.Loan{
+		BookId:       1,
+		BorrowerName: "user1",
+		LoanDate:     time.Now(),
+		ReturnDate:   time.Now().AddDate(0, 0, 28),
+		IsReturn:     false,
 	}
 
 	t.Run("Create new loan", func(t *testing.T) {
-		createdLoan, err := repo.CreateLoan("book1", loanDetail)
+		createdLoan, err := repo.CreateLoan(ctx, "book1", loanDetail)
 		assert.NoError(t, err)
 		assert.NotNil(t, createdLoan)
-		assert.Equal(t, "user1", createdLoan.NameOfBorrower)
+		assert.Equal(t, "user1", createdLoan.BorrowerName)
 	})
 
 	t.Run("Fail to create duplicate loan", func(t *testing.T) {
-		_, err := repo.CreateLoan("book1", loanDetail)
+		_, err := repo.CreateLoan(ctx, "book1", loanDetail)
 		assert.Error(t, err)
 		assert.Equal(t, ErrExistingActiveLoan, err)
 	})
@@ -32,24 +36,27 @@ func TestLoanRepository_CreateLoan(t *testing.T) {
 
 func TestLoanRepository_GetLoan(t *testing.T) {
 	repo := NewLoanRepository()
+	ctx := context.Background()
 
-	loanDetail := &models.LoanDetail{
-		NameOfBorrower: "user2",
-		LoanDate:       time.Now(),
-		ReturnDate:     time.Now().AddDate(0, 0, 28),
+	loanDetail := &models.Loan{
+		BookId:       1,
+		BorrowerName: "user2",
+		LoanDate:     time.Now(),
+		ReturnDate:   time.Now().AddDate(0, 0, 28),
+		IsReturn:     false,
 	}
-	_, err := repo.CreateLoan("book2", loanDetail)
+	_, err := repo.CreateLoan(ctx, "book2", loanDetail)
 	assert.NoError(t, err)
 
 	t.Run("Get existing loan", func(t *testing.T) {
-		loan, err := repo.GetLoan("book2", "user2")
+		loan, err := repo.GetLoan(ctx, "book2", "user2")
 		assert.NoError(t, err)
 		assert.NotNil(t, loan)
-		assert.Equal(t, "user2", loan.NameOfBorrower)
+		assert.Equal(t, "user2", loan.BorrowerName)
 	})
 
 	t.Run("Get non-existent loan", func(t *testing.T) {
-		loan, err := repo.GetLoan("book2", "user_xyz")
+		loan, err := repo.GetLoan(ctx, "book2", "user_xyz")
 		assert.Error(t, err)
 		assert.Nil(t, loan)
 		assert.Equal(t, ErrLoanNotFound, err)
@@ -58,30 +65,33 @@ func TestLoanRepository_GetLoan(t *testing.T) {
 
 func TestLoanRepository_UpdateLoan(t *testing.T) {
 	repo := NewLoanRepository()
+	ctx := context.Background()
 
-	loanDetail := &models.LoanDetail{
-		NameOfBorrower: "user3",
-		LoanDate:       time.Now(),
-		ReturnDate:     time.Now().AddDate(0, 0, 28),
+	loanDetail := &models.Loan{
+		LoanDate:     time.Now(),
+		ReturnDate:   time.Now().AddDate(0, 0, 28),
+		IsReturn:     false,
+		BorrowerName: "user3",
+		BookId:       3,
 	}
-	_, err := repo.CreateLoan("book3", loanDetail)
+	_, err := repo.CreateLoan(ctx, "book3", loanDetail)
 	assert.NoError(t, err)
 
 	t.Run("Update existing loan", func(t *testing.T) {
 		newReturnDate := time.Now().AddDate(0, 0, 35) // Extend loan
-		updatedLoan, err := repo.UpdateLoan("book3", &models.LoanDetail{
-			NameOfBorrower: "user3",
-			LoanDate:       loanDetail.LoanDate,
-			ReturnDate:     newReturnDate,
+		updatedLoan, err := repo.UpdateLoan(ctx, "book3", "user3", &models.LoanUpdate{
+			ReturnDate: &newReturnDate,
 		})
-
 		assert.NoError(t, err)
 		assert.NotNil(t, updatedLoan)
 		assert.Equal(t, newReturnDate, updatedLoan.ReturnDate)
 	})
 
+	currTime := time.Now()
 	t.Run("Fail to update non-existent loan", func(t *testing.T) {
-		_, err := repo.UpdateLoan("book3", &models.LoanDetail{NameOfBorrower: "user_xyz"})
+		_, err := repo.UpdateLoan(ctx, "book3", "user30", &models.LoanUpdate{
+			ReturnDate: &currTime,
+		})
 		assert.Error(t, err)
 		assert.Equal(t, ErrLoanNotFound, err)
 	})
@@ -89,26 +99,29 @@ func TestLoanRepository_UpdateLoan(t *testing.T) {
 
 func TestLoanRepository_DeleteLoan(t *testing.T) {
 	repo := NewLoanRepository()
+	ctx := context.Background()
 
-	loanDetail := &models.LoanDetail{
-		NameOfBorrower: "user4",
-		LoanDate:       time.Now(),
-		ReturnDate:     time.Now().AddDate(0, 0, 28),
+	loanDetail := &models.Loan{
+		LoanDate:     time.Now(),
+		ReturnDate:   time.Now().AddDate(0, 0, 28),
+		IsReturn:     false,
+		BorrowerName: "user4",
+		BookId:       1,
 	}
-	_, _ = repo.CreateLoan("book4", loanDetail)
+	_, _ = repo.CreateLoan(ctx, "book4", loanDetail)
 
 	t.Run("Delete existing loan", func(t *testing.T) {
-		err := repo.DeleteLoan("book4", "user4")
+		err := repo.DeleteLoan(ctx, "book4", "user4")
 		assert.NoError(t, err)
 
 		// Verify loan is removed
-		loan, err := repo.GetLoan("book4", "user4")
+		loan, err := repo.GetLoan(ctx, "book4", "user4")
 		assert.Error(t, err)
 		assert.Nil(t, loan)
 	})
 
 	t.Run("Fail to delete non-existent loan", func(t *testing.T) {
-		err := repo.DeleteLoan("book4", "user_xyz")
+		err := repo.DeleteLoan(ctx, "book4", "user_xyz")
 		assert.Error(t, err)
 		assert.Equal(t, ErrLoanNotFound, err)
 	})

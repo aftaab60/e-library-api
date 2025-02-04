@@ -5,6 +5,15 @@ import (
 	"time"
 )
 
+type Loan struct {
+	Id           int       `json:"id"`
+	BookId       int       `json:"book_id"`
+	BorrowerName string    `json:"borrower_name"`
+	LoanDate     time.Time `json:"loan_date"`
+	ReturnDate   time.Time `json:"return_date"`
+	IsReturn     bool      `json:"is_return"`
+}
+
 type LoanDetail struct {
 	NameOfBorrower string    `json:"name_of_borrower"`
 	LoanDate       time.Time `json:"loan_date"`
@@ -25,4 +34,10 @@ func (b *LoanRequest) Validate() error {
 	}
 	//other validations as needed...
 	return nil
+}
+
+// LoanUpdate allowed fields that can be updated
+type LoanUpdate struct {
+	ReturnDate *time.Time `json:"return_date"`
+	IsReturn   *bool      `json:"is_return"`
 }
