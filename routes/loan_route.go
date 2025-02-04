@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/aftaab60/e-library-api/models"
@@ -37,9 +38,9 @@ func (r *LoanRoute) BorrowBook(c *gin.Context) {
 
 	LoanDetail, err := r.LoanService.BorrowBook(ctx, request.Title, request.BorrowerName)
 	if err != nil {
-		if errors.Is(err, repositories.ErrBookNotFound) {
+		if errors.Is(err, repositories.ErrBookNotFound) || errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
-		} else if errors.Is(err, services.ErrNoAvailableCopiesFound) {
+		} else if errors.Is(err, services.ErrNoAvailableCopiesFound) || errors.Is(err, services.ErrExistingLoanFound) {
 			c.JSON(http.StatusConflict, gin.H{"message": err.Error()})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -67,7 +68,7 @@ func (r *LoanRoute) ExtendLoan(c *gin.Context) {
 
 	LoanDetail, err := r.LoanService.ExtendLoan(ctx, request.Title, request.BorrowerName)
 	if err != nil {
-		if errors.Is(err, repositories.ErrLoanNotFound) {
+		if errors.Is(err, repositories.ErrLoanNotFound) || errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -94,7 +95,7 @@ func (r *LoanRoute) ReturnBook(c *gin.Context) {
 	}
 
 	if err := r.LoanService.ReturnBook(ctx, request.Title, request.BorrowerName); err != nil {
-		if errors.Is(err, repositories.ErrLoanNotFound) {
+		if errors.Is(err, repositories.ErrLoanNotFound) || errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
