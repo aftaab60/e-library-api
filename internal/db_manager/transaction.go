@@ -45,7 +45,9 @@ func WrapInTransaction(ctx context.Context, db ItxDB, f func(ctx context.Context
 		//for in-memory, it's a regular execution.
 		//But we mimic transaction into map and manage it through a common transactionManager
 		if err := f(ctx); err != nil {
-			onRollback(err)
+			if onRollback != nil {
+				onRollback(err)
+			}
 			return err
 		}
 		return nil

@@ -100,6 +100,7 @@ func (s *LoanService) ExtendLoan(ctx context.Context, title string, borrowerName
 		} else {
 			log.Printf("error getting Loan from repository: %v", err)
 		}
+		return nil, err
 	}
 
 	//extend 3 more weeks
@@ -159,6 +160,6 @@ func (s *LoanService) ReturnBook(ctx context.Context, title string, borrowerName
 		return err
 	}
 
-	log.Printf("book has been returned, loanId: %d, booktitle: %s, borrowerName: %s\n", title, borrowerName)
+	log.Printf("book has been returned, booktitle: %s, borrowerName: %s\n", title, borrowerName)
 	return nil
 }

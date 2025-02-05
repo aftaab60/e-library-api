@@ -52,7 +52,7 @@ func (l *LoanRepository) CreateLoan(ctx context.Context, title string, loanDetai
 	loanDetails, exists := l.loans[title]
 	if exists {
 		for _, loan := range loanDetails {
-			if loanDetail.BorrowerName == loan.BorrowerName {
+			if loanDetail.BorrowerName == loan.BorrowerName && !loan.IsReturn {
 				return nil, ErrExistingActiveLoan
 			}
 		}
